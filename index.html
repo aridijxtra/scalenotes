@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Major Scales</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a2e;
+    color: #e8e8f0;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #c9b8ff;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: #8888aa;
+    margin-bottom: 32px;
+  }
+
+  .scales-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .scale-card {
+    background: #16213e;
+    border: 1px solid #2a2a4a;
+    border-radius: 14px;
+    padding: 18px 20px;
+  }
+
+  .scale-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #c9b8ff;
+    margin-bottom: 14px;
+    letter-spacing: 0.05em;
+  }
+
+  .degree-labels {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+
+  .degree-label {
+    flex: 1;
+    text-align: center;
+    font-size: 10px;
+    color: #555577;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+  }
+
+  .notes-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .note-btn {
+    flex: 1;
+    padding: 10px 4px;
+    border-radius: 9px;
+    border: 1px solid #2e2e5a;
+    background: #0f3460;
+    color: #a8c8ff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.08s, transform 0.08s, color 0.08s, border-color 0.08s;
+    text-align: center;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    letter-spacing: 0.01em;
+    line-height: 1.2;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .note-btn:hover {
+    background: #1a4a80;
+    border-color: #5588cc;
+    color: #d0e8ff;
+  }
+
+  .note-btn:active,
+  .note-btn.playing {
+    background: #7c4dff;
+    border-color: #9c70ff;
+    color: #ffffff;
+    transform: scale(0.94);
+  }
+
+  .root-note {
+    background: #1a3a70;
+    border-color: #4466aa;
+    color: #c8dcff;
+  }
+
+  .root-note:hover {
+    background: #234a90;
+  }
+
+  .root-note.playing {
+    background: #9c27b0;
+    border-color: #ce93d8;
+  }
+
+  @media (max-width: 480px) {
+    h1 { font-size: 22px; }
+    .scales-grid { grid-template-columns: 1fr; }
+    .note-btn { font-size: 12px; padding: 8px 2px; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Major Scales</h1>
+<p class="subtitle">Tap any note to hear it</p>
+
+<div class="scales-grid" id="scalesGrid"></div>
+
+<script>
+const scales = [
+  { name: "C major",   notes: ["C","D","E","F","G","A","B"] },
+  { name: "C# major",  notes: ["C#","D#","F","F#","G#","A#","C"] },
+  { name: "D major",   notes: ["D","E","F#","G","A","B","C#"] },
+  { name: "D# major",  notes: ["D#","F","G","G#","A#","C","D"] },
+  { name: "E major",   notes: ["E","F#","G#","A","B","C#","D#"] },
+  { name: "F major",   notes: ["F","G","A","A#","C","D","E"] },
+  { name: "F# major",  notes: ["F#","G#","A#","B","C#","D#","F"] },
+  { name: "G major",   notes: ["G","A","B","C","D","E","F#"] },
+  { name: "G# major",  notes: ["G#","A#","C","C#","D#","F","G"] },
+  { name: "A major",   notes: ["A","B","C#","D","E","F#","G#"] },
+  { name: "A# major",  notes: ["A#","C","D","D#","F","G","A"] },
+  { name: "B major",   notes: ["B","C#","D#","E","F#","G#","A#"] },
+];
+
+const NOTE_FREQS = {
+  "C":261.63,"C#":277.18,"D":293.66,"D#":311.13,
+  "E":329.63,"F":349.23,"F#":369.99,"G":392.00,
+  "G#":415.30,"A":440.00,"A#":466.16,"B":493.88
+};
+
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playGuitar(freq) {
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+
+  const bufferSize = Math.floor(ctx.sampleRate / freq);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = Math.random() * 2 - 1;
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(freq * 4, ctx.currentTime);
+  filter.frequency.exponentialRampToValueAtTime(freq * 1.5, ctx.currentTime + 0.05);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.5, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.4);
+
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  source.start();
+  source.stop(ctx.currentTime + 1.5);
+}
+
+function buildUI() {
+  const grid = document.getElementById('scalesGrid');
+  const degrees = ["1","2","3","4","5","6","7"];
+
+  scales.forEach(scale => {
+    const card = document.createElement('div');
+    card.className = 'scale-card';
+
+    const title = document.createElement('div');
+    title.className = 'scale-title';
+    title.textContent = scale.name;
+    card.appendChild(title);
+
+    const labelRow = document.createElement('div');
+    labelRow.className = 'degree-labels';
+    degrees.forEach(d => {
+      const lbl = document.createElement('div');
+      lbl.className = 'degree-label';
+      lbl.textContent = d;
+      labelRow.appendChild(lbl);
+    });
+    card.appendChild(labelRow);
+
+    const notesRow = document.createElement('div');
+    notesRow.className = 'notes-row';
+
+    scale.notes.forEach((note, idx) => {
+      const btn = document.createElement('button');
+      btn.className = 'note-btn' + (idx === 0 ? ' root-note' : '');
+      btn.textContent = note;
+      btn.setAttribute('aria-label', `Play ${note} (degree ${idx+1} of ${scale.name})`);
+
+      const triggerPlay = () => {
+        const freq = NOTE_FREQS[note];
+        if (!freq) return;
+        playGuitar(freq);
+        btn.classList.add('playing');
+        setTimeout(() => btn.classList.remove('playing'), 200);
+      };
+
+      btn.addEventListener('click', triggerPlay);
+      btn.addEventListener('touchstart', e => { e.preventDefault(); triggerPlay(); }, { passive: false });
+      notesRow.appendChild(btn);
+    });
+
+    card.appendChild(notesRow);
+    grid.appendChild(card);
+  });
+}
+
+buildUI();
+</script>
+</body>
+</html>
