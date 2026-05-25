@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scale Explorer</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a2e;color:#e8e8f0;min-height:100vh;padding-bottom:48px}
+  .top-bar{padding:1.5rem 1rem 0.5rem;text-align:center}
+  .top-bar h1{font-size:26px;font-weight:600;color:#c9b8ff;margin-bottom:6px;letter-spacing:.04em}
+  .top-bar p{font-size:13px;color:#8888aa}
+  .nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:1rem}
+  .nav-btn{padding:6px 14px;font-size:13px;border:1px solid #2a2a4a;border-radius:10px;background:#16213e;color:#8888aa;cursor:pointer;transition:background .12s,color .12s,border-color .12s}
+  .nav-btn.active{background:#3a2a6e;border-color:#7c5ddb;color:#d0c0ff;font-weight:600}
+  .nav-btn:hover:not(.active){background:#1e2a50;border-color:#4a4a70;color:#b0b0cc}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:center;padding:0 1rem 1rem;font-size:12px;color:#8888aa}
+  .leg{display:flex;align-items:center;gap:5px}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .section{display:none;padding:0 1rem 2rem}
+  .section.visible{display:block}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:4px}
+  .card{background:#16213e;border:1px solid #2a2a4a;border-radius:14px;padding:14px 16px}
+  .card-title{font-size:13px;font-weight:600;color:#c9b8ff;margin-bottom:10px;letter-spacing:.04em}
+  .deg-labels{display:flex;gap:5px;margin-bottom:4px}
+  .deg-lbl{flex:1;text-align:center;font-size:10px;color:#555577;font-weight:500}
+  .notes-row{display:flex;gap:5px}
+  .nbtn{flex:1;min-height:40px;padding:8px 2px;border-radius:8px;border:1px solid #2e2e5a;background:#0f3460;color:#a8c8ff;font-size:12px;font-weight:600;cursor:pointer;transition:background .08s,transform .08s,color .08s,border-color .08s;text-align:center;user-select:none;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center;line-height:1.1}
+  .nbtn:hover{background:#1a4a80;border-color:#5588cc;color:#d0e8ff}
+  .nbtn:active,.nbtn.playing{transform:scale(0.92)}
+  .nbtn.d1{background:#2a1f00;border-color:#996600;color:#f0b830}
+  .nbtn.d1:hover{background:#382800;border-color:#bb8800}
+  .nbtn.d1.playing{background:#cc9900;border-color:#ffe066;color:#1a1000}
+  .nbtn.d3{background:#2a1010;border-color:#884422;color:#ff8866}
+  .nbtn.d3:hover{background:#381515;border-color:#aa5533}
+  .nbtn.d3.playing{background:#cc4422;border-color:#ff7755;color:#fff0ee}
+  .nbtn.d5{background:#0a2218;border-color:#1a6644;color:#44cc88}
+  .nbtn.d5:hover{background:#0d2e22;border-color:#22885a}
+  .nbtn.d5.playing{background:#1a9e65;border-color:#55dd99;color:#ffffff}
+  .nbtn.d7b{background:#1a1535;border-color:#4433aa;color:#9988ee}
+  .nbtn.d7b:hover{background:#221b44;border-color:#5544cc}
+  .nbtn.d7b.playing{background:#5544cc;border-color:#8877ff;color:#fff}
+  @media(max-width:480px){
+    .top-bar h1{font-size:20px}
+    .grid{grid-template-columns:1fr}
+    .nbtn{font-size:11px;padding:6px 1px}
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>Scale Explorer</h1>
+  <p>Tap any note to hear it · roots, thirds and fifths are highlighted</p>
+</div>
+
+<nav class="nav" id="nav"></nav>
+
+<div class="legend">
+  <span class="leg"><span class="dot" style="background:#f0b830"></span>Root (1)</span>
+  <span class="leg"><span class="dot" style="background:#ff8866"></span>Third (3)</span>
+  <span class="leg"><span class="dot" style="background:#44cc88"></span>Fifth (5)</span>
+  <span class="leg"><span class="dot" style="background:#9988ee"></span>♭7 (modes) / blue note ♭5 (blues)</span>
+  <span class="leg"><span class="dot" style="background:#4477aa"></span>Other</span>
+</div>
+
+<div id="sections"></div>
+
+<script>
+const GROUPS = [
+  {
+    id:"major", label:"Major",
+    degrees:["1","2","3","4","5","6","7"],
+    highlight:{1:"d1",3:"d3",5:"d5"},
+    scales:[
+      {name:"C major",   notes:["C","D","E","F","G","A","B"]},
+      {name:"C# major",  notes:["C#","D#","F","F#","G#","A#","C"]},
+      {name:"D major",   notes:["D","E","F#","G","A","B","C#"]},
+      {name:"D# major",  notes:["D#","F","G","G#","A#","C","D"]},
+      {name:"E major",   notes:["E","F#","G#","A","B","C#","D#"]},
+      {name:"F major",   notes:["F","G","A","A#","C","D","E"]},
+      {name:"F# major",  notes:["F#","G#","A#","B","C#","D#","F"]},
+      {name:"G major",   notes:["G","A","B","C","D","E","F#"]},
+      {name:"G# major",  notes:["G#","A#","C","C#","D#","F","G"]},
+      {name:"A major",   notes:["A","B","C#","D","E","F#","G#"]},
+      {name:"A# major",  notes:["A#","C","D","D#","F","G","A"]},
+      {name:"B major",   notes:["B","C#","D#","E","F#","G#","A#"]},
+    ]
+  },
+  {
+    id:"minor", label:"Minor",
+    degrees:["1","2","♭3","4","5","♭6","♭7"],
+    highlight:{1:"d1",3:"d3",5:"d5"},
+    scales:[
+      {name:"C minor",   notes:["C","D","D#","F","G","G#","A#"]},
+      {name:"C# minor",  notes:["C#","D#","E","F#","G#","A","B"]},
+      {name:"D minor",   notes:["D","E","F","G","A","A#","C"]},
+      {name:"D# minor",  notes:["D#","F","F#","G#","A#","B","C#"]},
+      {name:"E minor",   notes:["E","F#","G","A","B","C","D"]},
+      {name:"F minor",   notes:["F","G","G#","A#","C","C#","D#"]},
+      {name:"F# minor",  notes:["F#","G#","A","B","C#","D","E"]},
+      {name:"G minor",   notes:["G","A","A#","C","D","D#","F"]},
+      {name:"G# minor",  notes:["G#","A#","B","C#","D#","E","F#"]},
+      {name:"A minor",   notes:["A","B","C","D","E","F","G"]},
+      {name:"A# minor",  notes:["A#","C","C#","D#","F","F#","G#"]},
+      {name:"B minor",   notes:["B","C#","D","E","F#","G","A"]},
+    ]
+  },
+  {
+    id:"blues", label:"Blues pentatonisch",
+    degrees:["1","♭3","4","♭5","5","♭7"],
+    highlight:{1:"d1",3:"d3",4:"d7b",5:"d5"},
+    scales:[
+      {name:"C blues",   notes:["C","D#","F","F#","G","A#"]},
+      {name:"C# blues",  notes:["C#","E","F#","G","G#","B"]},
+      {name:"D blues",   notes:["D","F","G","G#","A","C"]},
+      {name:"D# blues",  notes:["D#","F#","G#","A","A#","C#"]},
+      {name:"E blues",   notes:["E","G","A","A#","B","D"]},
+      {name:"F blues",   notes:["F","G#","A#","B","C","D#"]},
+      {name:"F# blues",  notes:["F#","A","B","C","C#","E"]},
+      {name:"G blues",   notes:["G","A#","C","C#","D","F"]},
+      {name:"G# blues",  notes:["G#","B","C#","D","D#","F#"]},
+      {name:"A blues",   notes:["A","C","D","D#","E","G"]},
+      {name:"A# blues",  notes:["A#","C#","D#","E","F","G#"]},
+      {name:"B blues",   notes:["B","D","E","F","F#","A"]},
+    ]
+  },
+  {
+    id:"mixolydian", label:"Mixolydian",
+    degrees:["1","2","3","4","5","6","♭7"],
+    highlight:{1:"d1",3:"d3",5:"d5",7:"d7b"},
+    scales:[
+      {name:"C mixolydian",   notes:["C","D","E","F","G","A","A#"]},
+      {name:"C# mixolydian",  notes:["C#","D#","F","F#","G#","A#","B"]},
+      {name:"D mixolydian",   notes:["D","E","F#","G","A","B","C"]},
+      {name:"D# mixolydian",  notes:["D#","F","G","G#","A#","C","C#"]},
+      {name:"E mixolydian",   notes:["E","F#","G#","A","B","C#","D"]},
+      {name:"F mixolydian",   notes:["F","G","A","A#","C","D","D#"]},
+      {name:"F# mixolydian",  notes:["F#","G#","A#","B","C#","D#","E"]},
+      {name:"G mixolydian",   notes:["G","A","B","C","D","E","F"]},
+      {name:"G# mixolydian",  notes:["G#","A#","C","C#","D#","F","F#"]},
+      {name:"A mixolydian",   notes:["A","B","C#","D","E","F#","G"]},
+      {name:"A# mixolydian",  notes:["A#","C","D","D#","F","G","G#"]},
+      {name:"B mixolydian",   notes:["B","C#","D#","E","F#","G#","A"]},
+    ]
+  },
+  {
+    id:"lydian", label:"Lydian",
+    degrees:["1","2","3","#4","5","6","7"],
+    highlight:{1:"d1",3:"d3",5:"d5"},
+    scales:[
+      {name:"C lydian",   notes:["C","D","E","F#","G","A","B"]},
+      {name:"C# lydian",  notes:["C#","D#","F","G","G#","A#","C"]},
+      {name:"D lydian",   notes:["D","E","F#","G#","A","B","C#"]},
+      {name:"D# lydian",  notes:["D#","F","G","A","A#","C","D"]},
+      {name:"E lydian",   notes:["E","F#","G#","A#","B","C#","D#"]},
+      {name:"F lydian",   notes:["F","G","A","B","C","D","E"]},
+      {name:"F# lydian",  notes:["F#","G#","A#","C","C#","D#","F"]},
+      {name:"G lydian",   notes:["G","A","B","C#","D","E","F#"]},
+      {name:"G# lydian",  notes:["G#","A#","C","D","D#","F","G"]},
+      {name:"A lydian",   notes:["A","B","C#","D#","E","F#","G#"]},
+      {name:"A# lydian",  notes:["A#","C","D","E","F","G","A"]},
+      {name:"B lydian",   notes:["B","C#","D#","F","F#","G#","A#"]},
+    ]
+  },
+  {
+    id:"dorian", label:"Dorian",
+    degrees:["1","2","♭3","4","5","6","♭7"],
+    highlight:{1:"d1",3:"d3",5:"d5",7:"d7b"},
+    scales:[
+      {name:"C dorian",   notes:["C","D","D#","F","G","A","A#"]},
+      {name:"C# dorian",  notes:["C#","D#","E","F#","G#","A#","B"]},
+      {name:"D dorian",   notes:["D","E","F","G","A","B","C"]},
+      {name:"D# dorian",  notes:["D#","F","F#","G#","A#","C","C#"]},
+      {name:"E dorian",   notes:["E","F#","G","A","B","C#","D"]},
+      {name:"F dorian",   notes:["F","G","G#","A#","C","D","D#"]},
+      {name:"F# dorian",  notes:["F#","G#","A","B","C#","D#","E"]},
+      {name:"G dorian",   notes:["G","A","A#","C","D","E","F"]},
+      {name:"G# dorian",  notes:["G#","A#","B","C#","D#","F","F#"]},
+      {name:"A dorian",   notes:["A","B","C","D","E","F#","G"]},
+      {name:"A# dorian",  notes:["A#","C","C#","D#","F","G","G#"]},
+      {name:"B dorian",   notes:["B","C#","D","E","F#","G#","A"]},
+    ]
+  },
+  {
+    id:"phrygian", label:"Phrygian",
+    degrees:["1","♭2","♭3","4","5","♭6","♭7"],
+    highlight:{1:"d1",3:"d3",5:"d5",7:"d7b"},
+    scales:[
+      {name:"C phrygian",   notes:["C","C#","D#","F","G","G#","A#"]},
+      {name:"C# phrygian",  notes:["C#","D","E","F#","G#","A","B"]},
+      {name:"D phrygian",   notes:["D","D#","F","G","A","A#","C"]},
+      {name:"D# phrygian",  notes:["D#","E","F#","G#","A#","B","C#"]},
+      {name:"E phrygian",   notes:["E","F","G","A","B","C","D"]},
+      {name:"F phrygian",   notes:["F","F#","G#","A#","C","C#","D#"]},
+      {name:"F# phrygian",  notes:["F#","G","A","B","C#","D","E"]},
+      {name:"G phrygian",   notes:["G","G#","A#","C","D","D#","F"]},
+      {name:"G# phrygian",  notes:["G#","A","B","C#","D#","E","F#"]},
+      {name:"A phrygian",   notes:["A","A#","C","D","E","F","G"]},
+      {name:"A# phrygian",  notes:["A#","B","C#","D#","F","F#","G#"]},
+      {name:"B phrygian",   notes:["B","C","D","E","F#","G","A"]},
+    ]
+  },
+];
+
+const CHROMA=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const BASE={C:261.63,"C#":277.18,D:293.66,"D#":311.13,E:329.63,F:349.23,"F#":369.99,G:392.00,"G#":415.30,A:440.00,"A#":466.16,B:493.88};
+let audioCtx=null;
+function getCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function playNote(freq){
+  const ctx=getCtx();if(ctx.state==='suspended')ctx.resume();
+  const bsz=Math.floor(ctx.sampleRate/freq);
+  const buf=ctx.createBuffer(1,bsz,ctx.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<bsz;i++)d[i]=Math.random()*2-1;
+  const src=ctx.createBufferSource();src.buffer=buf;src.loop=true;
+  const flt=ctx.createBiquadFilter();flt.type='lowpass';
+  flt.frequency.setValueAtTime(freq*4,ctx.currentTime);
+  flt.frequency.exponentialRampToValueAtTime(freq*1.5,ctx.currentTime+0.05);
+  const gain=ctx.createGain();
+  gain.gain.setValueAtTime(0.5,ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.3,ctx.currentTime+0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+1.4);
+  src.connect(flt);flt.connect(gain);gain.connect(ctx.destination);
+  src.start();src.stop(ctx.currentTime+1.5);
+}
+function freqs(notes){
+  const out=[];let mul=1,prev=-1;
+  notes.forEach(n=>{const c=CHROMA.indexOf(n);if(c<=prev)mul*=2;out.push(BASE[n]*mul);prev=c;});
+  return out;
+}
+function buildSection(group){
+  const sec=document.createElement('div');
+  sec.className='section';sec.id='sec-'+group.id;
+  const grid=document.createElement('div');grid.className='grid';
+  group.scales.forEach(scale=>{
+    const card=document.createElement('div');card.className='card';
+    const title=document.createElement('div');title.className='card-title';title.textContent=scale.name;card.appendChild(title);
+    const lblRow=document.createElement('div');lblRow.className='deg-labels';
+    group.degrees.forEach(d=>{const l=document.createElement('div');l.className='deg-lbl';l.textContent=d;lblRow.appendChild(l);});
+    card.appendChild(lblRow);
+    const f=freqs(scale.notes);
+    const nRow=document.createElement('div');nRow.className='notes-row';
+    scale.notes.forEach((note,i)=>{
+      const deg=i+1;
+      const cls=group.highlight[deg]||'';
+      const btn=document.createElement('button');
+      btn.className='nbtn'+(cls?' '+cls:'');
+      btn.textContent=note;
+      btn.setAttribute('aria-label',`Play ${note} (degree ${deg} of ${scale.name})`);
+      const freq=f[i];
+      const go=()=>{playNote(freq);btn.classList.add('playing');setTimeout(()=>btn.classList.remove('playing'),200);};
+      btn.addEventListener('click',go);
+      btn.addEventListener('touchstart',e=>{e.preventDefault();go();},{passive:false});
+      nRow.appendChild(btn);
+    });
+    card.appendChild(nRow);grid.appendChild(card);
+  });
+  sec.appendChild(grid);return sec;
+}
+
+const nav=document.getElementById('nav');
+const secs=document.getElementById('sections');
+GROUPS.forEach((g,i)=>{
+  const btn=document.createElement('button');
+  btn.className='nav-btn'+(i===0?' active':'');
+  btn.textContent=g.label;
+  btn.dataset.id=g.id;
+  const sec=buildSection(g);
+  if(i===0)sec.classList.add('visible');
+  secs.appendChild(sec);
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('visible'));
+    sec.classList.add('visible');
+  });
+  nav.appendChild(btn);
+});
+</script>
+</body>
+</html>
